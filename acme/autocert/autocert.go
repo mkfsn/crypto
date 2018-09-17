@@ -148,6 +148,10 @@ type Manager struct {
 	// on what each client supports.
 	ForceRSA bool
 
+	// DisableHTTP2 used to make the Manager disable HTTP/2, default is false
+	// thus enable HTTP/2.
+	DisableHTTP2 bool
+
 	// ExtraExtensions are used when generating a new CSR (Certificate Request),
 	// thus allowing customization of the resulting certificate.
 	// For instance, TLS Feature Extension (RFC 7633) can be used
@@ -208,12 +212,19 @@ func (c certKey) String() string {
 // TLSConfig creates a new TLS config suitable for net/http.Server servers,
 // supporting HTTP/2 and the tls-alpn-01 ACME challenge type.
 func (m *Manager) TLSConfig() *tls.Config {
+	nextProtos := []string{
+		"http/1.1",
+		acme.ALPNProto, // enable tls-alpn ACME challenges
+	}
+
+	if !m.DisableHTTP2 {
+		// enable HTTP/2
+		nextProtos = append([]string{"h2"}, nextProtos...)
+	}
+
 	return &tls.Config{
 		GetCertificate: m.GetCertificate,
-		NextProtos: []string{
-			"h2", "http/1.1", // enable HTTP/2
-			acme.ALPNProto, // enable tls-alpn ACME challenges
-		},
+		NextProtos:     nextProtos,
 	}
 }
 
